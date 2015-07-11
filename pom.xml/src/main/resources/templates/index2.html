@@ -1,0 +1,315 @@
+<html>
+<head>
+	<meta http-equiv="Content-Type" content="text/html; charset=utf8" />
+<title>Телефонная книга</title>
+
+<link rel="stylesheet" type="text/css" media="screen" href="/lib/jquery-ui-bootstrap/assets/css/bootstrap.min.css" />
+<link rel="stylesheet" type="text/css" media="screen" href="/lib/jqGrid/css/ui.jqgrid.css" />
+<link rel="stylesheet" type="text/css" href="/lib/jquery-ui-bootstrap/css/custom-theme/jquery-ui-1.10.0.custom.css"/>
+<link type="text/css" href="/lib/jquery-ui-bootstrap/assets/css/font-awesome.min.css" rel="stylesheet" />
+<!--[if IE 7]>
+    <link rel="stylesheet" href="/lib/jquery-ui-bootstrap/assets/css/font-awesome-ie7.min.css">
+<![endif]-->
+<!--[if lt IE 9]>
+    <link rel="stylesheet" type="text/css" href="/lib/jquery-ui-bootstrap/css/custom-theme/jquery.ui.1.10.0.ie.css"/>
+<![endif]-->
+<link rel="stylesheet" href="/lib/jqGrid/css/ui.jqgrid.css" />
+
+<!-- HTML5 shim and Respond.js IE8 support of HTML5 elements and media queries -->
+<!--[if lt IE 9]>
+	<script src="/lib/vendor/html5shiv.js" type="text/javascript"></script>
+	<script src="/lib/vendor/respond.min.js" type="text/javascript"></script>
+<![endif]-->
+        
+
+<script type="text/ecmascript" src="/lib/jQuery/jquery-1.11.0.min.js"></script>
+<script src="/lib/jquery-ui-bootstrap/assets/js/bootstrap.min.js" type="text/javascript"></script>
+<script src="/lib/jquery-ui-bootstrap/assets/js/jquery-ui-1.10.0.custom.min.js"
+	type="text/javascript"></script>
+
+<script type="text/ecmascript" src="/lib/jqGrid/js/i18n/grid.locale-en.js"></script>
+<script type="text/ecmascript" src="/lib/jqGrid/js/jquery.jqGrid.min.js"></script>
+
+	<script type='text/javascript'>
+	var RestURL = '/persons';
+	$(function() {
+		$("#grid").jqGrid({
+		   	url:RestURL,
+			datatype: 'json',
+
+			mtype: 'GET',
+		   	colModel : [ {
+				label : 'id',
+				name : 'id',
+				hidden : true,
+				key : true,
+				width : 75
+			}, {
+				label : 'ФИО',
+				name : 'fullName',
+				editable : true,
+				width : 75
+			}, {
+				label : 'Телефон',
+				name : 'phone',
+				editable : true,
+				width : 150
+			}, {
+				label : 'Адрес',
+				name : 'address',
+				editable : true,
+				width : 150
+			} ],
+			postData: {},
+			rowNum:10,
+		   	rowList:[10,20,40,60],
+		   	height: 240,
+		   	autowidth: true,
+			rownumbers: true,
+		   	pager: '#pager',
+		   	sortname: 'id',
+		    viewrecords: true,
+		    sortorder: "asc",
+		    caption:"Records",
+		    emptyrecords: "Empty records",
+		    loadonce: false,
+		    loadComplete: function() {},
+		    jsonReader : {
+		        root: "rows",
+		        page: "page",
+		        total: "total",
+		        records: "records",
+		        repeatitems: false,
+		        cell: "cell",
+		        id: "id"
+		    }
+		});
+
+		$("#grid").jqGrid('navGrid','#pager',
+				{edit:false, add:false, del:false, search:true},
+				{}, {}, {}, 
+				{ 	// search
+					sopt:['cn', 'eq', 'ne', 'lt', 'gt', 'bw', 'ew'],
+					closeOnEscape: true, 
+					multipleSearch: true, 
+					closeAfterSearch: true
+				}
+		);
+		
+		$("#grid").navButtonAdd('#pager',
+				{ 	caption:"Add", 
+					buttonicon:"ui-icon-plus", 
+					onClickButton: addRow,
+					position: "last", 
+					title:"", 
+					cursor: "pointer"
+				} 
+		);
+		
+		$("#grid").navButtonAdd('#pager',
+				{ 	caption:"Edit", 
+					buttonicon:"ui-icon-pencil", 
+					onClickButton: editRow,
+					position: "last", 
+					title:"", 
+					cursor: "pointer"
+				} 
+		);
+		
+		$("#grid").navButtonAdd('#pager',
+			{ 	caption:"Delete", 
+				buttonicon:"ui-icon-trash", 
+				onClickButton: deleteRow,
+				position: "last", 
+				title:"", 
+				cursor: "pointer"
+			} 
+		);
+
+		// Toolbar Search
+		$("#grid").jqGrid('filterToolbar',{stringResult: true,searchOnEnter : true, defaultSearch:"cn"});
+	});
+
+	function addRow() {
+   		$("#grid").jqGrid('setColProp', 'username', {editoptions:{readonly:false, size:10}});
+   		$("#grid").jqGrid('setColProp', 'password', {hidden: false});
+   		$("#grid").jqGrid('setColProp', 'password', {editrules:{required:true}});
+   		
+		// Get the currently selected row
+		$('#grid').jqGrid('editGridRow','new',
+	    		{ 	url: RestURL,
+					type : "POST",
+				    recreateForm: true,
+				    beforeShowForm: function(form) {
+			            $('#pData').hide();  
+			            $('#nData').hide();
+			            $('#password',form).addClass('ui-widget-content').addClass('ui-corner-all');
+				    },
+					beforeInitData: function(form) {},
+					closeAfterAdd: true,
+					reloadAfterSubmit:true,
+					afterSubmit : function(response, postdata) 
+					{ 
+				        var result = eval('(' + response.responseText + ')');
+						var errors = "";
+						
+				        if (result.success == false) {
+							for (var i = 0; i < result.message.length; i++) {
+								errors +=  result.message[i] + "<br/>";
+							}
+				        }  else {
+				        	$('#msgbox').text('Entry has been added successfully');
+							$('#msgbox').dialog( 
+									{	title: 'Success',
+										modal: true,
+										buttons: {"Ok": function()  {
+											$(this).dialog("close");} 
+										}
+									});
+		                }
+				    	// only used for adding new records
+				    	var newId = null;
+				    	
+						return [result.success, errors, newId];
+					}
+	    		});
+
+   		$("#grid").jqGrid('setColProp', 'password', {hidden: true});
+	} // end of addRow
+
+
+	function editRow() {
+   		$("#grid").jqGrid('setColProp', 'username', {editoptions:{readonly:true, size:10}});
+   		$("#grid").jqGrid('setColProp', 'password', {hidden: true});
+   		$("#grid").jqGrid('setColProp', 'password', {editrules:{required:false}});
+   		
+		// Get the currently selected row
+		var row = $('#grid').jqGrid('getGridParam','selrow');
+		
+		if( row != null ) {
+		
+			$('#grid').jqGrid('editGridRow', row,
+				{	url: RestURL,
+					type : "PUT",
+			    	editData: {},
+			        recreateForm: true,
+			        beforeShowForm: function(form) {
+			            $('#pData').hide();  
+			            $('#nData').hide();
+			        },
+					beforeInitData: function(form) {},
+					closeAfterEdit: true,
+					reloadAfterSubmit:true,
+					afterSubmit : function(response, postdata) 
+					{ 
+			            var result = eval('(' + response.responseText + ')');
+						var errors = "";
+						
+			            if (result.success == false) {
+							for (var i = 0; i < result.message.length; i++) {
+								errors +=  result.message[i] + "<br/>";
+							}
+			            }  else {
+			            	$('#msgbox').text('Entry has been edited successfully');
+							$('#msgbox').dialog( 
+									{	title: 'Success',
+										modal: true,
+										buttons: {"Ok": function()  {
+											$(this).dialog("close");} 
+										}
+									});
+		                }
+				    	// only used for adding new records
+				    	var newId = null;
+			        	
+						return [result.success, errors, newId];
+					}
+				});
+		} else {
+			$('#msgbox').text('You must select a record first!');
+			$('#msgbox').dialog( 
+					{	title: 'Error',
+						modal: true,
+						buttons: {"Ok": function()  {
+							$(this).dialog("close");} 
+						}
+					});
+		}
+	}
+	
+	function deleteRow() {
+		// Get the currently selected row
+	    var row = $('#grid').jqGrid('getGridParam','selrow');
+
+	    // A pop-up dialog will appear to confirm the selected action
+		if( row != null ) 
+			$('#grid').jqGrid( 'delGridRow', row,
+	          	{	
+				url: RestURL,
+				type : "DELETE",
+			    	recreateForm: true,
+				    beforeShowForm: function(form) {
+				    	//Change title
+				        $(".delmsg").replaceWith('<span style="white-space: pre;">' +
+				        		'Delete selected record?' + '</span>');
+		            	//hide arrows
+				        $('#pData').hide();  
+				        $('#nData').hide();
+				    },
+	          		reloadAfterSubmit:true,
+	          		closeAfterDelete: true,
+	          		serializeDelData: function (postdata) {
+		          	      var rowdata = $('#grid').getRowData(postdata.id);
+		          	      // append postdata with any information 
+		          	      return {id: postdata.id, oper: postdata.oper, username: rowdata.username};
+		          	},
+	          		afterSubmit : function(response, postdata) 
+					{ 
+			            var result = eval('(' + response.responseText + ')');
+						var errors = "";
+						
+			            if (result.success == false) {
+							for (var i = 0; i < result.message.length; i++) {
+								errors +=  result.message[i] + "<br/>";
+							}
+			            }  else {
+			            	$('#msgbox').text('Entry has been deleted successfully');
+							$('#msgbox').dialog( 
+									{	title: 'Success',
+										modal: true,
+										buttons: {"Ok": function()  {
+											$(this).dialog("close");} 
+										}
+									});
+		                }
+				    	// only used for adding new records
+				    	var newId = null;
+			        	
+						return [result.success, errors, newId];
+					}
+	          	});
+		else {
+			$('#msgbox').text('You must select a record first!');
+			$('#msgbox').dialog( 
+					{	title: 'Error',
+						modal: true,
+						buttons: {"Ok": function()  {
+							$(this).dialog("close");} 
+						}
+					});
+		}
+	}
+	</script>
+</head>
+
+<body>
+	<h1 id='banner'>System Records</h1>
+	
+	<div id='jqgrid'>
+		<table id='grid'></table>
+		<div id='pager'></div>
+	</div>
+	
+	<div id='msgbox' title='' style='display:none'></div>
+</body>
+</html>
